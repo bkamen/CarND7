@@ -51,6 +51,22 @@ UKF::UKF() {
 
   Hint: one or more values initialized above might be wildly off...
   */
+
+  // state dimension
+  n_x_ = 5;
+
+  // augmented state dimension
+  n_aug_ = 7;
+
+  // weights of sigma points
+  weights_ = VectorXd(2*n_aug_+1);
+
+  // sigma point spreading parameter
+  lambda_ = 3 - n_aug_;
+
+  // previous timestamp for delta_t calculation
+  double previous_timestamp_ = 0;
+
 }
 
 UKF::~UKF() {}
@@ -66,6 +82,54 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   Complete this function! Make sure you switch between lidar and radar
   measurements.
   */
+  
+  // check if is initialized
+  if(!is_initialized_) {
+    x_ << 0, 0, 0, 0, 0;
+
+    if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
+      float ro, theta, ro_dot;
+      ro = meas_package.raw_measurements_(0);
+      theta = meas_package.raw_measurements_(1);
+      ro_dot = meas_package.raw_measurements_(2);
+
+      x_(0) = ro * cos(theta);
+      x_(1) = ro * sin(theta);
+      x_(2) = sqrt((ro_dot * cos(theta))*(ro_dot * cos(theta)) 
+              + (ro_dot * sin(theta))*(ro_dot * sin(theta)));
+      x_(3) = atan2(x_(1), x_(0));
+      x_(4) = atan2(ro_dot * sin(theta), ro_dot * cos(theta));
+    } else if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
+      x_(0) = meas_package.raw_measurements_(0);
+      x_(1) = meas_package.raw_measurements_(1);
+      x_(3) = atan2(x_(1), x_(0));
+    }
+
+    // set new previous timestamp for delta_t calculation
+    previous_timestamp_ = meas_package.timestamp_;
+
+    // if initialisation done return
+    is_initialized_ = true;
+    return;
+  }
+
+  // calculate delta_t
+  delta_t = meas_package.timestamp_ - previous_timestamp_;
+
+  /*
+  Prediction
+  */
+  UKF::Prediction(delta_t);
+
+
+  /*
+  Update
+  */
+  if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
+    UKF::UpdateLidar(meas_package);
+  } else {
+    UKF::UpdateRadar(meas_package);
+  }
 }
 
 /**
