@@ -102,7 +102,6 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     } else if (meas_package.sensor_type_ == MeasurementPackage::LASER) {
       x_(0) = meas_package.raw_measurements_(0);
       x_(1) = meas_package.raw_measurements_(1);
-      x_(3) = atan2(x_(1), x_(0));
     }
 
     // set new previous timestamp for delta_t calculation
